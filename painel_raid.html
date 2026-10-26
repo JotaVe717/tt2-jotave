@@ -5,717 +5,95 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Painel de Raids ao Vivo - Tap Titans 2</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-    }
-    body {
-      background-color: #0f141c;
-      color: #ffffff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 10px 8px calc(45px + env(safe-area-inset-bottom, 0px)) 8px;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-    .back-btn {
-      align-self: flex-start;
-      max-width: 1750px;
-      margin: 0 auto 8px auto;
-      width: 100%;
-      text-decoration: none;
-      color: #8fa0b5;
-      font-size: 13px;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      border-radius: 8px;
-      background: #141c26;
-      border: 1px solid #233142;
-      transition: color 0.2s, background 0.2s;
-    }
-    .back-btn:hover, .back-btn:active {
-      color: #f5a623;
-      background: #192330;
-    }
-    
-    .container {
-      width: 100%;
-      max-width: 1750px;
-      background: #18202a;
-      border: 1px solid #283545;
-      border-radius: 16px;
-      padding: 14px 14px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }
-
-    /* TOPO: TÍTULO E CRONÔMETRO */
-    .top-header-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      gap: 10px;
-    }
-    .title {
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      margin: 0;
-      text-align: left;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+    body { background-color: #0f141c; color: #ffffff; display: flex; flex-direction: column; align-items: center; padding: 10px 8px; min-height: 100vh; }
+    .back-btn { align-self: flex-start; max-width: 1750px; margin: 0 auto 8px auto; width: 100%; text-decoration: none; color: #8fa0b5; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; background: #141c26; border: 1px solid #233142; }
+    .container { width: 100%; max-width: 1750px; background: #18202a; border: 1px solid #283545; border-radius: 16px; padding: 14px; }
+    .top-header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .title { font-size: 20px; font-weight: 800; text-transform: uppercase; margin: 0; }
     .title span { color: #f5a623; }
-    
-    .subtitle {
-      text-align: left;
-      font-size: 11.5px;
-      color: #8fa0b5;
-      margin-bottom: 14px;
-    }
-
-    /* CRONÔMETRO DISCRETO */
-    .countdown-banner {
-      background: #121922;
-      border: 1.5px solid #2d4156;
-      border-radius: 8px;
-      padding: 5px 10px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
-      flex-shrink: 0;
-    }
-    .countdown-banner-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .countdown-banner-label span {
-      font-size: 11px;
-      font-weight: 800;
-      color: #8fa0b5;
-      text-transform: uppercase;
-    }
-    .countdown-banner-timer {
-      font-size: 15px;
-      font-weight: 900;
-      letter-spacing: 0.6px;
-      font-variant-numeric: tabular-nums;
-      color: #50e3c2;
-    }
-
-    .section-block { margin-bottom: 0; }
-
-    /* DETALHES NA ESQUERDA (280px) E CORPO NA DIREITA */
-    .titan-dashboard-layout {
-      display: grid;
-      grid-template-columns: 280px 1fr;
-      gap: 12px;
-      align-items: start;
-    }
-
-    .titan-info-box {
-      background: #121922;
-      border: 1.5px solid #3a4b60;
-      border-radius: 12px;
-      padding: 10px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-      align-self: start;
-    }
-
-    /* TOPO: MT1 + BUFF À ESQUERDA | VOID, SMASH, VM À DIREITA */
-    .titan-zone-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      padding-bottom: 6px;
-    }
-    .titan-zone-left-tags {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-    .badge-zone {
-      background: rgba(179, 136, 255, 0.16);
-      border: 1.5px solid #b388ff;
-      color: #b388ff;
-      font-weight: 900;
-      font-size: 11px;
-      padding: 2.5px 8px;
-      border-radius: 6px;
-      letter-spacing: 0.4px;
-    }
-
-    /* BADGES DE SUPORTE */
-    .titan-support-badges {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .badge-sup {
-      font-size: 9px;
-      font-weight: 900;
-      padding: 2.5px 6px;
-      border-radius: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-      transition: all 0.25s ease;
-    }
-    .badge-sup.active {
-      background: rgba(80, 227, 194, 0.25);
-      border: 1.5px solid #50e3c2;
-      color: #50e3c2;
-      box-shadow: 0 0 8px rgba(80, 227, 194, 0.35);
-    }
-    .badge-sup.off {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: #4b5868;
-      opacity: 0.6;
-    }
-
-    /* BUFF AZUL COM ÍCONE DE AFLIÇÃO */
-    .buff-badge-display {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: rgba(56, 161, 243, 0.14);
-      border: 1px solid rgba(56, 161, 243, 0.5);
-      border-radius: 5px;
-      padding: 2px 7px;
-    }
-    .buff-badge-icon {
-      width: 15px;
-      height: 15px;
-      object-fit: contain;
-      display: block;
-    }
-    .buff-badge-text {
-      font-size: 10px;
-      font-weight: 900;
-      color: #38a1f3;
-      letter-spacing: 0.3px;
-      white-space: nowrap;
-    }
-
-    .badge-tita-count {
-      background: rgba(80, 227, 194, 0.16);
-      border: 1.5px solid #50e3c2;
-      color: #50e3c2;
-      font-size: 10.5px;
-      font-weight: 900;
-      padding: 2.5px 8px;
-      border-radius: 6px;
-      letter-spacing: 0.3px;
-    }
-    .badge-ciclo-tag {
-      background: rgba(245, 166, 35, 0.16);
-      border: 1.5px solid #f5a623;
-      color: #f5a623;
-      font-size: 10.5px;
-      font-weight: 900;
-      padding: 2.5px 8px;
-      border-radius: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-    }
-
-    .titan-name-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-    }
-    .titan-name-left {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      overflow: hidden;
-      flex-shrink: 1;
-    }
-    .titan-name-right-tags {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      flex-shrink: 0;
-    }
-    .titan-seq {
-      background: #f5a623;
-      color: #0f141c;
-      font-weight: 900;
-      font-size: 11.5px;
-      padding: 2px 7px;
-      border-radius: 5px;
-    }
-    .titan-name-text {
-      font-size: 15.5px;
-      font-weight: 800;
-      color: #ffffff;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .hp-overall-box {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      background: #18222e;
-      border: 1px solid #283748;
-      padding: 7px 9px;
-      border-radius: 8px;
-    }
-    .hp-overall-labels {
-      display: flex;
-      justify-content: space-between;
-      font-size: 10.5px;
-      font-weight: 700;
-    }
-    .hp-bar-outer {
-      width: 100%;
-      height: 10px;
-      background: #0a0e14;
-      border-radius: 5px;
-      overflow: hidden;
-      border: 1px solid #2b394a;
-    }
-    .hp-bar-fill-overall {
-      height: 100%;
-      background: linear-gradient(90deg, #ff5722, #4cd964);
-      border-radius: 5px;
-      transition: width 0.4s ease;
-    }
-
-    /* DESEMPENHO DO CLÃ ACOPLADO */
-    .clan-inline-block {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      background: #0d131a;
-      border: 1px solid #283748;
-      border-radius: 8px;
-      padding: 6px 8px;
-    }
-    .clan-inline-header {
-      font-size: 9.5px;
-      font-weight: 800;
-      color: #f5a623;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      border-bottom: 1px solid rgba(40, 53, 69, 0.6);
-      padding-bottom: 3px;
-    }
-    .clan-inline-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 4px;
-    }
-    .clan-inline-item {
-      background: #151e29;
-      border: 1px solid #253342;
-      border-radius: 6px;
-      padding: 4px 6px;
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-    }
-    .clan-inline-item span {
-      font-size: 8px;
-      font-weight: 700;
-      color: #8fa0b5;
-      text-transform: uppercase;
-      letter-spacing: 0.2px;
-    }
-    .clan-inline-item strong {
-      font-size: 11.5px;
-      font-weight: 800;
-      color: #50e3c2;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .clan-inline-item strong.green { color: #4cd964; }
-
-    /* GRID ANATÔMICO */
-    .anatomy-grid {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr) !important;
-      column-gap: 8px;
-      row-gap: 10px;
-      align-items: stretch;
-      background: #0d131a;
-      padding: 12px 10px;
-      border-radius: 12px;
-      border: 1px dashed #283748;
-      width: 100%;
-      margin: 0 auto;
-    }
-
-    .area-shoulderR { grid-column: span 2; }
-    .area-head      { grid-column: span 2; }
-    .area-shoulderL { grid-column: span 2; }
-
-    .area-handR     { grid-column: span 2; }
-    .area-chest     { grid-column: span 2; }
-    .area-handL     { grid-column: span 2; }
-
-    .area-legR      { grid-column: 2 / span 2; }
-    .area-legL      { grid-column: 4 / span 2; }
-
-    .anatomy-card {
-      background: #161f2a;
-      border: 1px solid #2e3f54;
-      border-radius: 10px;
-      padding: 10px 10px 8px 10px;
-      min-height: 84px;
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.45);
-      transition: all 0.25s ease;
-      position: relative;
-    }
-    .anatomy-card.has-skip {
-      border-color: rgba(255, 82, 82, 0.45);
-      background: rgba(255, 82, 82, 0.06);
-    }
-    .anatomy-card.part-dead {
-      background: #10151c !important;
-      border: 1px solid #1e2632 !important;
-      opacity: 0.4;
-      box-shadow: none;
-    }
-
-    .anatomy-card.decay-target {
-      border-color: #b388ff !important;
-      box-shadow: 0 0 12px rgba(179, 136, 255, 0.4) !important;
-      background: rgba(179, 136, 255, 0.08);
-    }
-    .bar-fill-armor.decay-bar,
-    .bar-fill-body.decay-bar {
-      background: linear-gradient(90deg, #b388ff, #7c4dff) !important;
-    }
-
-    .card-head-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid rgba(43, 57, 74, 0.8);
-      padding-bottom: 5px;
-      gap: 4px;
-      width: 100%;
-    }
-    .card-head-left {
-      display: flex;
-      align-items: center;
-      overflow: hidden;
-      flex: 1;
-    }
-
-    .badge-decay {
-      font-size: 9px;
-      font-weight: 900;
-      color: #ffffff;
-      background: #7c4dff;
-      border: 1px solid #b388ff;
-      padding: 1.5px 5px;
-      border-radius: 4px;
-      letter-spacing: 0.3px;
-      white-space: nowrap;
-    }
-    .badge-skip {
-      font-size: 8.5px;
-      font-weight: 900;
-      color: #ff5252;
-      background: rgba(255, 82, 82, 0.2);
-      border: 1px solid rgba(255, 82, 82, 0.45);
-      padding: 1.5px 5px;
-      border-radius: 4px;
-      white-space: nowrap;
-    }
-    .badge-destroyed {
-      font-size: 8.5px;
-      font-weight: 900;
-      color: #8fa0b5;
-      background: rgba(143, 160, 181, 0.16);
-      border: 1px solid rgba(143, 160, 181, 0.35);
-      padding: 1.5px 5px;
-      border-radius: 4px;
-      white-space: nowrap;
-    }
-
-    .badge-hp-perc {
-      background: #202c38;
-      border: 1px solid #3c5066;
-      color: #e2ebf5;
-      font-size: 11px;
-      font-weight: 900;
-      padding: 2px 6px;
-      border-radius: 5px;
-      line-height: 1.1;
-      white-space: nowrap;
-      flex-shrink: 0;
-      letter-spacing: 0.3px;
-    }
-
-    /* METAS DE DANO */
-    .bar-meta {
-      display: flex;
-      justify-content: space-between;
-      font-size: 10.5px;
-      font-weight: 700;
-      align-items: center;
-      margin-top: 1px;
-    }
-    .label-armor    { color: #4facfe; font-weight: 800; display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; }
-    .label-body     { color: #ff5e62; font-weight: 800; display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; }
-    .label-skeleton { color: #8fa0b5; font-weight: 800; display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; }
-    .bar-val        { color: #ffffff; font-size: 10.5px; font-weight: 900; letter-spacing: 0.2px; }
-
-    .bar-group {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .bar-track {
-      width: 100%;
-      height: 8px;
-      background: #0a0e14;
-      border-radius: 4px;
-      overflow: hidden;
-      border: 1px solid #202c3a;
-    }
-    .bar-fill-armor {
-      height: 100%;
-      background: linear-gradient(90deg, #00f2fe, #4facfe);
-      border-radius: 4px;
-      transition: width 0.3s ease;
-    }
-    .bar-fill-body {
-      height: 100%;
-      background: linear-gradient(90deg, #ff9966, #ff5e62);
-      border-radius: 4px;
-      transition: width 0.3s ease;
-    }
-    .bar-fill-body.target-ok {
-      background: linear-gradient(90deg, #38ef7d, #11998e);
-    }
-
-    /* ---------------- ADAPTAÇÃO MOBILE ESPECÍFICA ---------------- */
+    .subtitle { font-size: 11.5px; color: #8fa0b5; margin-bottom: 14px; }
+    .titan-dashboard-layout { display: grid; grid-template-columns: 280px 1fr; gap: 12px; align-items: start; }
+    .titan-info-box { background: #121922; border: 1.5px solid #3a4b60; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+    .titan-zone-row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 6px; }
+    .badge-zone { background: rgba(179, 136, 255, 0.16); border: 1.5px solid #b388ff; color: #b388ff; font-weight: 900; font-size: 11px; padding: 2.5px 8px; border-radius: 6px; }
+    .buff-badge-display { display: inline-flex; align-items: center; gap: 5px; background: rgba(56, 161, 243, 0.14); border: 1px solid rgba(56, 161, 243, 0.5); border-radius: 5px; padding: 2px 7px; }
+    .buff-badge-text { font-size: 10px; font-weight: 900; color: #38a1f3; }
+    .titan-name-row { display: flex; justify-content: space-between; }
+    .titan-seq { background: #f5a623; color: #0f141c; font-weight: 900; font-size: 11.5px; padding: 2px 7px; border-radius: 5px; }
+    .titan-name-text { font-size: 15.5px; font-weight: 800; color: #ffffff; }
+    .badge-ciclo-tag { background: rgba(245, 166, 35, 0.16); border: 1.5px solid #f5a623; color: #f5a623; font-size: 10.5px; font-weight: 900; padding: 2.5px 8px; border-radius: 6px; }
+    .hp-overall-box { display: flex; flex-direction: column; gap: 3px; background: #18222e; border: 1px solid #283748; padding: 7px 9px; border-radius: 8px; }
+    .hp-overall-labels { display: flex; justify-content: space-between; font-size: 10.5px; font-weight: 700; }
+    .hp-bar-outer { width: 100%; height: 10px; background: #0a0e14; border-radius: 5px; border: 1px solid #2b394a; }
+    .hp-bar-fill-overall { height: 100%; background: linear-gradient(90deg, #ff5722, #4cd964); border-radius: 5px; }
+    .anatomy-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; background: #0d131a; padding: 12px 10px; border-radius: 12px; border: 1px dashed #283748; }
+    .area-shoulderR { grid-column: span 2; } .area-head { grid-column: span 2; } .area-shoulderL { grid-column: span 2; }
+    .area-handR { grid-column: span 2; } .area-chest { grid-column: span 2; } .area-handL { grid-column: span 2; }
+    .area-legR { grid-column: 2 / span 2; } .area-legL { grid-column: 4 / span 2; }
+    .anatomy-card { background: #161f2a; border: 1px solid #2e3f54; border-radius: 10px; padding: 10px; min-height: 84px; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
+    .anatomy-card.part-dead { background: #10151c; border-color: #1e2632; opacity: 0.4; }
+    .card-head-row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(43, 57, 74, 0.8); padding-bottom: 5px; }
+    .badge-hp-perc { background: #202c38; border: 1px solid #3c5066; font-size: 11px; font-weight: 900; padding: 2px 6px; border-radius: 5px; }
+    .bar-meta { display: flex; justify-content: space-between; font-size: 10.5px; font-weight: 700; margin-top: 1px; }
+    .label-armor { color: #4facfe; font-weight: 800; } .label-body { color: #ff5e62; font-weight: 800; } .label-skeleton { color: #8fa0b5; }
+    .bar-val { color: #ffffff; font-weight: 900; }
+    .bar-track { width: 100%; height: 8px; background: #0a0e14; border-radius: 4px; border: 1px solid #202c3a; }
+    .bar-fill-armor { height: 100%; background: linear-gradient(90deg, #00f2fe, #4facfe); border-radius: 4px; }
+    .bar-fill-body { height: 100%; background: linear-gradient(90deg, #ff9966, #ff5e62); border-radius: 4px; }
+    .badge-destroyed { font-size: 8.5px; font-weight: 900; color: #8fa0b5; background: rgba(143, 160, 181, 0.16); padding: 1.5px 5px; border-radius: 4px; }
     @media (max-width: 1080px) {
-      body {
-        padding: 8px 6px calc(35px + env(safe-area-inset-bottom, 0px)) 6px;
-      }
-      .container {
-        padding: 10px 10px;
-        border-radius: 12px;
-      }
-
-      /* TÍTULO PRINCIPAL GRANDE */
-      .top-header-bar {
-        margin-bottom: 8px;
-      }
-      .title {
-        font-size: 24px;
-        font-weight: 900;
-        letter-spacing: 0.5px;
-      }
-      .subtitle {
-        display: none !important;
-      }
-
-      .countdown-banner {
-        padding: 4px 8px;
-      }
-      .countdown-banner-timer {
-        font-size: 13.5px;
-      }
-
-      .titan-dashboard-layout {
-        grid-template-columns: 1fr;
-        gap: 10px;
-      }
-
-      /* LINHA DO NOME: ESTICADA PARA ALINHAR STERL NA ESQ E TITÃ/CICLO NA DIR */
-      .titan-name-row {
-        width: 100%;
-      }
-      .titan-name-right-tags {
-        margin-left: auto;
-      }
-
-      .anatomy-grid {
-        column-gap: 5px;
-        row-gap: 6px;
-        padding: 8px 6px;
-      }
-      .anatomy-card {
-        padding: 6px 5px;
-        min-height: 72px;
-        border-radius: 8px;
-      }
-      .badge-decay, .badge-destroyed, .badge-skip {
-        font-size: 7.5px;
-        padding: 1px 3px;
-      }
-      .badge-hp-perc, .bar-meta, .label-armor, .label-body, .label-skeleton, .bar-val {
-        font-size: 9px;
-      }
-      .bar-track {
-        height: 6px;
-      }
+      .titan-dashboard-layout { grid-template-columns: 1fr; }
+      .anatomy-grid { gap: 5px; padding: 8px; }
+      .anatomy-card { min-height: 72px; padding: 6px; }
     }
   </style>
 </head>
 <body>
-
   <a href="index.html" class="back-btn">&larr; Voltar ao Menu</a>
-
   <div class="container">
+    <div class="top-header-bar"><div class="title">Raid <span>Ao Vivo</span></div></div>
+    <div class="subtitle" id="lastUpdateText">Sincronizando com Supabase...</div>
     
-    <!-- BARRA SUPERIOR INTEGRADA: TÍTULO À ESQUERDA + TIMER DISCRETO À DIREITA -->
-    <div class="top-header-bar">
-      <div class="title">Raid <span>Ao Vivo</span></div>
-
-      <div class="countdown-banner" id="bannerCiclo" style="display: none;">
-        <div class="countdown-banner-label">
-          <span>⏳</span>
-        </div>
-        <div class="countdown-banner-timer" id="mNextCiclo">--:--:--</div>
-      </div>
-    </div>
-
-    <div class="subtitle" id="lastUpdateText">Sincronizando com as suas planilhas...</div>
-
-    <!-- PAINEL DO TITÃ -->
     <div class="section-block" id="secCurrentTitan" style="display: none;">
-
       <div class="titan-dashboard-layout">
-        
-        <!-- DETALHES DA RAID NA ESQUERDA (EXATOS 280px) -->
         <div class="titan-info-box">
-          
-          <!-- LINHA 1: MT1 + BUFF DA RAID À ESQUERDA | BADGES VOID/SMASH/VM À DIREITA -->
           <div class="titan-zone-row">
-            <div class="titan-zone-left-tags">
-              <span class="badge-zone" id="mRaidName">MT1</span>
-              
-              <!-- BUFF DA RAID (+30% DANO) AO LADO DE MT1 -->
-              <div class="buff-badge-display" id="buffRaidContainer">
-                <img src="Cards/a.png" alt="Aflição" class="buff-badge-icon" id="buffRaidImg" onerror="this.src='Cards/b.png'">
-                <span class="buff-badge-text" id="mBuffRaid">+30% DANO</span>
-              </div>
-            </div>
-
-            <!-- BADGES DE SUPORTE NO CANTO SUPERIOR DIREITO -->
-            <div class="titan-support-badges">
-              <span class="badge-sup off" id="bVoid" title="Void Ativo">Void</span>
-              <span class="badge-sup off" id="bSmash" title="Smash Ativo">Smash</span>
-              <span class="badge-sup off" id="bVM" title="VM Ativo">VM</span>
-            </div>
+            <span class="badge-zone" id="mRaidName">Raid Ativa</span>
           </div>
-
-          <!-- LINHA 2: #3 STERL À ESQUERDA | TITÃ 3/3 E CICLO 4 À DIREITA NA MESMA ALTURA -->
           <div class="titan-name-row">
             <div class="titan-name-left">
-              <span class="titan-seq" id="cTitanSeq">#3</span>
-              <span class="titan-name-text" id="cTitanName">Nome do Titã</span>
+              <span class="titan-seq" id="cTitanSeq">#</span>
+              <span class="titan-name-text" id="cTitanName">Titã</span>
             </div>
-            
-            <div class="titan-name-right-tags">
-              <span class="badge-tita-count" id="cTitanCount">Titã 3/3</span>
-              <span class="badge-ciclo-tag" id="cRaidCycle">Ciclo 4</span>
-            </div>
+            <span class="badge-ciclo-tag" id="cRaidCycle">Ciclo -</span>
           </div>
-
-          <!-- VIDA DO TITÃ -->
           <div class="hp-overall-box">
-            <div class="hp-overall-labels">
-              <span>Vida do Titã</span>
-              <span id="cTitanHpTxt">0 / 0 (0%)</span>
-            </div>
-            <div class="hp-bar-outer">
-              <div class="hp-bar-fill-overall" id="cTitanHpFill" style="width: 100%;"></div>
-            </div>
+            <div class="hp-overall-labels"><span>Vida do Titã</span><span id="cTitanHpTxt">0 / 0 (0%)</span></div>
+            <div class="hp-bar-outer"><div class="hp-bar-fill-overall" id="cTitanHpFill" style="width: 100%;"></div></div>
           </div>
-
-          <!-- DESEMPENHO DO CLÃ ACOPLADO ABAIXO DO HP -->
-          <div class="clan-inline-block" id="cardDesempenho" style="display: none;">
-            <div class="clan-inline-header">⚔️ Desempenho do Clã</div>
-            <div class="clan-inline-grid">
-              <div class="clan-inline-item">
-                <span>Dano Total</span>
-                <strong id="mDanoTotal" class="green">-</strong>
-              </div>
-              <div class="clan-inline-item">
-                <span>Ainda Falta</span>
-                <strong id="mFalta">-</strong>
-              </div>
-              <div class="clan-inline-item">
-                <span>Presença</span>
-                <strong id="mPresenca">-</strong>
-              </div>
-              <div class="clan-inline-item">
-                <span>Média / Atk</span>
-                <strong id="mMediaAtk">-</strong>
-              </div>
-            </div>
-          </div>
-
         </div>
 
-        <!-- PAINEL ANATÔMICO DO TITÃ NA DIREITA -->
         <div class="anatomy-grid">
           <div class="anatomy-card area-shoulderR" id="card_ArmUpperRight"></div>
           <div class="anatomy-card area-head" id="card_Head"></div>
           <div class="anatomy-card area-shoulderL" id="card_ArmUpperLeft"></div>
-
           <div class="anatomy-card area-handR" id="card_HandRight"></div>
           <div class="anatomy-card area-chest" id="card_ChestUpper"></div>
           <div class="anatomy-card area-handL" id="card_HandLeft"></div>
-
           <div class="anatomy-card area-legR" id="card_LegUpperRight"></div>
           <div class="anatomy-card area-legL" id="card_LegUpperLeft"></div>
         </div>
-
       </div>
     </div>
-
   </div>
 
   <script>
-    // Conexão direta com o seu Supabase
     const SUPABASE_URL = 'https://hqhirsnowapylfwhvduf.supabase.co/rest/v1/eventos_raid';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxaGlyc25vd2FweWxmd2h2ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5MzU5MTgsImV4cCI6MjEwODUxMTkxOH0.d3IMYDumY7PZoM0ZdoiuMRikWjFXC0-rgR-dtUM-HZU';
 
-    const TITAN_NAMES = {
-      "Enemy1": "Lojak", "Enemy2": "Takedar", "Enemy3": "Jukk", "Enemy4": "Sterl",
-      "Enemy5": "Mohaca", "Enemy6": "Terro", "Enemy7": "Klonk", "Enemy8": "Priker"
-    };
-
-    const ANATOMY_PARTS = [
-      { key: 'Head' }, { key: 'ChestUpper' }, { key: 'ArmUpperLeft' }, { key: 'ArmUpperRight' },
-      { key: 'HandLeft' }, { key: 'HandRight' }, { key: 'LegUpperLeft' }, { key: 'LegUpperRight' }
-    ];
+    const TITAN_NAMES = { "Enemy1": "Lojak", "Enemy2": "Takedar", "Enemy3": "Jukk", "Enemy4": "Sterl", "Enemy5": "Mohaca", "Enemy6": "Terro", "Enemy7": "Klonk", "Enemy8": "Priker" };
+    const ANATOMY_PARTS = [{ key: 'Head' }, { key: 'ChestUpper' }, { key: 'ArmUpperLeft' }, { key: 'ArmUpperRight' }, { key: 'HandLeft' }, { key: 'HandRight' }, { key: 'LegUpperLeft' }, { key: 'LegUpperRight' }];
 
     function formatarHp(valor) {
       const v = Number(valor) || 0;
@@ -726,78 +104,62 @@
     }
 
     function getAreaClass(key) {
-      switch(key) {
-        case 'Head': return 'head'; case 'ChestUpper': return 'chest';
-        case 'ArmUpperRight': return 'shoulderR'; case 'ArmUpperLeft': return 'shoulderL';
-        case 'HandRight': return 'handR'; case 'HandLeft': return 'handL';
-        case 'LegUpperRight': return 'legR'; case 'LegUpperLeft': return 'legL';
-        default: return '';
-      }
+      const map = { 'Head':'head', 'ChestUpper':'chest', 'ArmUpperRight':'shoulderR', 'ArmUpperLeft':'shoulderL', 'HandRight':'handR', 'HandLeft':'handL', 'LegUpperRight':'legR', 'LegUpperLeft':'legL' };
+      return map[key] || '';
     }
 
     async function carregarPainel() {
       try {
         const headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
-
-        // Puxa o último ataque e o último ciclo separadamente
-        const [resAtaque, resCiclo] = await Promise.all([
-          fetch(`${SUPABASE_URL}?tipo_evento=eq.ataque_processado&order=id.desc&limit=1`, { headers }),
-          fetch(`${SUPABASE_URL}?tipo_evento=eq.raid_sub_cycle&order=id.desc&limit=1`, { headers })
-        ]);
-
-        const dadosAtaque = await resAtaque.json();
-        const dadosCiclo = await resCiclo.json();
+        
+        // Puxa os últimos 10 eventos para garantir que encontramos dados válidos
+        const res = await fetch(`${SUPABASE_URL}?order=id.desc&limit=10`, { headers });
+        const eventos = await res.json();
         
         let stateAtual = null;
         let stateMaximo = null;
         let cicloText = '-';
 
-        // 1. Tenta extrair a lista de titãs do início do ciclo
-        if (dadosCiclo && dadosCiclo.length > 0) {
-          const payloadCiclo = dadosCiclo[0].dados;
-          cicloText = payloadCiclo.cycle || cicloText;
-          if (payloadCiclo.raid && payloadCiclo.raid.titans) {
-            // Encontra o titã atual (o primeiro que ainda tem HP)
-            stateMaximo = payloadCiclo.raid.titans.find(t => t.current_hp > 0) || payloadCiclo.raid.titans[0];
+        // Varre os eventos para extrair o HP Atual e Máximo
+        for (let ev of eventos) {
+          if (!ev.dados) continue;
+          
+          // Encontra o estado mais recente do titã
+          if (!stateAtual && ev.dados.raid_state && ev.dados.raid_state.current) {
+            stateAtual = ev.dados.raid_state.current;
+            if (ev.dados.cycle) cicloText = ev.dados.cycle;
+          }
+          
+          // Encontra o HP máximo no início do ciclo
+          if (!stateMaximo && ev.tipo_evento === 'raid_sub_cycle' && ev.dados.raid && ev.dados.raid.titans) {
+            stateMaximo = ev.dados.raid.titans.find(t => t.current_hp > 0) || ev.dados.raid.titans[0];
+            if (ev.dados.cycle) cicloText = ev.dados.cycle;
           }
         }
 
-        // 2. Tenta extrair a vida do ataque mais recente
-        if (dadosAtaque && dadosAtaque.length > 0) {
-          stateAtual = dadosAtaque[0].dados.raid_state?.current;
-          cicloText = dadosAtaque[0].dados.cycle || cicloText;
-        } else {
-          // Se não houver nenhum ataque, usa o estado intacto do titã do sub_cycle
-          stateAtual = stateMaximo;
-        }
-        
-        // Proteção contra falhas estruturais
-        if (!stateMaximo) stateMaximo = stateAtual;
-        
+        if (!stateAtual && stateMaximo) stateAtual = stateMaximo;
+        if (!stateMaximo && stateAtual) stateMaximo = stateAtual;
+
         if (!stateAtual) {
-          document.getElementById('lastUpdateText').textContent = 'Aguardando dados da Game Hive...';
+          document.getElementById('lastUpdateText').textContent = 'Aguardando dados estruturados...';
           return;
         }
 
-        // 3. Prepara os dados básicos do Titã
-        const titanId = stateAtual.enemy_id;
-        const titanName = TITAN_NAMES[titanId] || titanId;
+        const titanId = stateAtual.enemy_id || stateAtual.id;
+        const titanName = TITAN_NAMES[titanId] || titanId || 'Titã';
         
         const titanHpTotal = stateMaximo.current_hp || stateAtual.current_hp || 1;
         const titanHpAtual = stateAtual.current_hp || 0;
         const percHp = (titanHpAtual / titanHpTotal) * 100;
 
-        document.getElementById('mRaidName').textContent = 'Raid Ativa';
         document.getElementById('cRaidCycle').textContent = 'Ciclo ' + cicloText;
         document.getElementById('cTitanName').textContent = titanName;
-        
         document.getElementById('cTitanHpTxt').textContent = `${formatarHp(titanHpAtual)} / ${formatarHp(titanHpTotal)} (${percHp.toFixed(1)}%)`;
         document.getElementById('cTitanHpFill').style.width = `${Math.max(0, Math.min(100, percHp))}%`;
 
-        document.getElementById('lastUpdateText').textContent = 'Conectado ao Supabase: Dados em tempo real';
+        document.getElementById('lastUpdateText').textContent = 'Ao Vivo';
         document.getElementById('secCurrentTitan').style.display = 'block';
 
-        // 4. Atualiza as barras das partes do corpo
         const partesAtual = stateAtual.parts || [];
         const partesMaximo = stateMaximo.parts || [];
         
@@ -815,61 +177,28 @@
           const armorTot = armorMaxObj ? armorMaxObj.current_hp : (armorCur || 1);
           const bodyTot = bodyMaxObj ? bodyMaxObj.current_hp : (bodyCur || 1);
 
-          const percArmor = (armorCur / armorTot) * 100;
-          const percBody = (bodyCur / bodyTot) * 100;
+          const percArmor = armorTot > 0 ? (armorCur / armorTot) * 100 : 0;
+          const percBody = bodyTot > 0 ? (bodyCur / bodyTot) * 100 : 0;
 
           const isDead = armorCur <= 0 && bodyCur <= 0;
 
           el.className = `anatomy-card area-${getAreaClass(part.key)} ${isDead ? 'part-dead' : ''}`;
           
-          let html = '';
           if (isDead) {
-            html = `
-              <div class="card-head-row">
-                <div class="card-head-left"><span class="badge-destroyed">DESTRUÍDA</span></div>
-                <span class="badge-hp-perc">-</span>
-              </div>
-              <div class="bar-group">
-                <div class="bar-meta"><span class="label-skeleton">💀 Esqueleto</span><span class="bar-val">0</span></div>
-                <div class="bar-track"><div class="bar-fill-armor" style="width: 0%;"></div></div>
-              </div>
-            `;
+            el.innerHTML = `<div class="card-head-row"><div class="card-head-left"><span class="badge-destroyed">DESTRUÍDA</span></div><span class="badge-hp-perc">-</span></div><div class="bar-group"><div class="bar-meta"><span class="label-skeleton">💀 Esqueleto</span><span class="bar-val">0</span></div><div class="bar-track"><div class="bar-fill-armor" style="width: 0%;"></div></div></div>`;
           } else if (armorCur > 0) {
-            html = `
-              <div class="card-head-row">
-                <div class="card-head-left"></div>
-                <span class="badge-hp-perc">${percArmor.toFixed(0)}%</span>
-              </div>
-              <div class="bar-group">
-                <div class="bar-meta"><span class="label-armor">🛡️ Armadura</span><span class="bar-val">${formatarHp(armorCur)}</span></div>
-                <div class="bar-track"><div class="bar-fill-armor" style="width: ${percArmor}%;"></div></div>
-              </div>
-            `;
+            el.innerHTML = `<div class="card-head-row"><div class="card-head-left"></div><span class="badge-hp-perc">${percArmor.toFixed(0)}%</span></div><div class="bar-group"><div class="bar-meta"><span class="label-armor">🛡️ Armadura</span><span class="bar-val">${formatarHp(armorCur)}</span></div><div class="bar-track"><div class="bar-fill-armor" style="width: ${percArmor}%;"></div></div></div>`;
           } else {
-            html = `
-              <div class="card-head-row">
-                <div class="card-head-left"></div>
-                <span class="badge-hp-perc">${percBody.toFixed(0)}%</span>
-              </div>
-              <div class="bar-group">
-                <div class="bar-meta"><span class="label-body">❤️ Corpo</span><span class="bar-val">${formatarHp(bodyCur)}</span></div>
-                <div class="bar-track"><div class="bar-fill-body target-ok" style="width: ${percBody}%;"></div></div>
-              </div>
-            `;
+            el.innerHTML = `<div class="card-head-row"><div class="card-head-left"></div><span class="badge-hp-perc">${percBody.toFixed(0)}%</span></div><div class="bar-group"><div class="bar-meta"><span class="label-body">❤️ Corpo</span><span class="bar-val">${formatarHp(bodyCur)}</span></div><div class="bar-track"><div class="bar-fill-body" style="width: ${percBody}%; background: linear-gradient(90deg, #38ef7d, #11998e);"></div></div></div>`;
           }
-          el.innerHTML = html;
         });
 
       } catch (err) {
-        console.error("Erro:", err);
-        document.getElementById('lastUpdateText').textContent = 'Erro ao buscar dados no Supabase.';
+        console.error(err);
       }
     }
 
-    window.addEventListener('load', () => {
-      carregarPainel();
-      setInterval(carregarPainel, 5000); 
-    });
+    window.addEventListener('load', () => { carregarPainel(); setInterval(carregarPainel, 5000); });
   </script>
 </body>
 </html>
