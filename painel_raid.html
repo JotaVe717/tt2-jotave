@@ -703,19 +703,11 @@
   </div>
 
   <script>
-    // Conexão direta com o seu Supabase
     const SUPABASE_URL = 'https://hqhirsnowapylfwhvduf.supabase.co/rest/v1/eventos_raid';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxaGlyc25vd2FweWxmd2h2ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5MzU5MTgsImV4cCI6MjEwODUxMTkxOH0.d3IMYDumY7PZoM0ZdoiuMRikWjFXC0-rgR-dtUM-HZU';
 
-    const TITAN_NAMES = {
-      "Enemy1": "Lojak", "Enemy2": "Takedar", "Enemy3": "Jukk", "Enemy4": "Sterl",
-      "Enemy5": "Mohaca", "Enemy6": "Terro", "Enemy7": "Klonk", "Enemy8": "Priker"
-    };
-
-    const ANATOMY_PARTS = [
-      { key: 'Head' }, { key: 'ChestUpper' }, { key: 'ArmUpperLeft' }, { key: 'ArmUpperRight' },
-      { key: 'HandLeft' }, { key: 'HandRight' }, { key: 'LegUpperLeft' }, { key: 'LegUpperRight' }
-    ];
+    const TITAN_NAMES = { "Enemy1": "Lojak", "Enemy2": "Takedar", "Enemy3": "Jukk", "Enemy4": "Sterl", "Enemy5": "Mohaca", "Enemy6": "Terro", "Enemy7": "Klonk", "Enemy8": "Priker" };
+    const ANATOMY_PARTS = [{ key: 'Head' }, { key: 'ChestUpper' }, { key: 'ArmUpperLeft' }, { key: 'ArmUpperRight' }, { key: 'HandLeft' }, { key: 'HandRight' }, { key: 'LegUpperLeft' }, { key: 'LegUpperRight' }];
 
     function formatarHp(valor) {
       const v = Number(valor) || 0;
@@ -726,59 +718,67 @@
     }
 
     function getAreaClass(key) {
-      switch(key) {
-        case 'Head': return 'head'; case 'ChestUpper': return 'chest';
-        case 'ArmUpperRight': return 'shoulderR'; case 'ArmUpperLeft': return 'shoulderL';
-        case 'HandRight': return 'handR'; case 'HandLeft': return 'handL';
-        case 'LegUpperRight': return 'legR'; case 'LegUpperLeft': return 'legL';
-        default: return '';
-      }
+      const map = { 'Head':'head', 'ChestUpper':'chest', 'ArmUpperRight':'shoulderR', 'ArmUpperLeft':'shoulderL', 'HandRight':'handR', 'HandLeft':'handL', 'LegUpperRight':'legR', 'LegUpperLeft':'legL' };
+      return map[key] || '';
     }
 
     async function carregarPainel() {
+      const txtStatus = document.getElementById('lastUpdateText');
       try {
-        const headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
-
-        // 1. Puxa o último ataque (HP Atual) e o último ciclo (HP Máximo)
-        const [resAtaque, resCiclo] = await Promise.all([
-          fetch(`${SUPABASE_URL}?tipo_evento=eq.ataque_processado&order=id.desc&limit=1`, { headers }),
-          fetch(`${SUPABASE_URL}?tipo_evento=eq.raid_sub_cycle&order=id.desc&limit=1`, { headers })
-        ]);
-
-        const dadosAtaque = await resAtaque.json();
-        const dadosCiclo = await resCiclo.json();
+        // O FILTRO: Busca APENAS ataques ou atualizações de ciclo, ignorando as conexões
+        const res = await fetch(`${SUPABASE_URL}?tipo_evento=in.(ataque_processado,raid_sub_cycle)&order=id.desc&limit=10`, { 
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } 
+        });
         
-        if (!dadosAtaque || dadosAtaque.length === 0) {
-          document.getElementById('lastUpdateText').textContent = 'Aguardando o primeiro ataque...';
+        if (!res.ok) throw new Error('Falha na comunicação.');
+        const eventos = await res.json();
+        
+        if (eventos.length === 0) {
+          txtStatus.textContent = 'Aguardando informações da Raid...';
           return;
         }
 
-        const stateAtual = dadosAtaque[0].dados.raid_state?.current;
-        // O HP máximo é a vida que o titã tinha no início do ciclo
-        const stateMaximo = (dadosCiclo && dadosCiclo.length > 0) ? dadosCiclo[0].dados.raid_state?.current : stateAtual;
-        
-        if (!stateAtual) return;
+        let stateAtual = null;
+        let stateMaximo = null;
+        let cicloText = '-';
 
-        // 2. Prepara os dados básicos do Titã
-        const titanId = stateAtual.enemy_id;
-        const titanName = TITAN_NAMES[titanId] || titanId;
+        for (let ev of eventos) {
+          if (!ev.dados) continue;
+          
+          if (!stateAtual && ev.dados.raid_state && ev.dados.raid_state.current) {
+            stateAtual = ev.dados.raid_state.current;
+            if (ev.dados.cycle) cicloText = ev.dados.cycle;
+          }
+          
+          if (!stateMaximo && ev.tipo_evento === 'raid_sub_cycle' && ev.dados.raid && ev.dados.raid.titans) {
+            stateMaximo = ev.dados.raid.titans.find(t => t.current_hp > 0) || ev.dados.raid.titans[0];
+            if (ev.dados.cycle) cicloText = ev.dados.cycle;
+          }
+        }
+
+        if (!stateAtual && stateMaximo) stateAtual = stateMaximo;
+        if (!stateMaximo && stateAtual) stateMaximo = stateAtual;
+
+        if (!stateAtual) {
+          txtStatus.textContent = 'Procurando alvo ativo...';
+          return;
+        }
+
+        txtStatus.textContent = 'Ao Vivo';
+        document.getElementById('secCurrentTitan').style.display = 'block';
+
+        const titanId = stateAtual.enemy_id || stateAtual.id;
+        const titanName = TITAN_NAMES[titanId] || titanId || 'Titã';
         
-        // Agora calcula corretamente com base no estado inicial do Titã
         const titanHpTotal = stateMaximo.current_hp || stateAtual.current_hp || 1;
         const titanHpAtual = stateAtual.current_hp || 0;
         const percHp = (titanHpAtual / titanHpTotal) * 100;
 
-        document.getElementById('mRaidName').textContent = 'Raid Ativa';
-        document.getElementById('cRaidCycle').textContent = 'Ciclo ' + (dadosAtaque[0].dados.cycle || '-');
+        document.getElementById('cRaidCycle').textContent = 'Ciclo ' + cicloText;
         document.getElementById('cTitanName').textContent = titanName;
-        
         document.getElementById('cTitanHpTxt').textContent = `${formatarHp(titanHpAtual)} / ${formatarHp(titanHpTotal)} (${percHp.toFixed(1)}%)`;
         document.getElementById('cTitanHpFill').style.width = `${Math.max(0, Math.min(100, percHp))}%`;
 
-        document.getElementById('lastUpdateText').textContent = 'Conectado ao Supabase: Dados em tempo real';
-        document.getElementById('secCurrentTitan').style.display = 'block';
-
-        // 3. Atualiza as barras das partes do corpo
         const partesAtual = stateAtual.parts || [];
         const partesMaximo = stateMaximo.parts || [];
         
@@ -786,74 +786,37 @@
           const el = document.getElementById(`card_${part.key}`);
           if (!el) return;
 
-          // HP Atual
           const armorCurObj = partesAtual.find(p => p.part_id === 'Armor' + part.key);
           const bodyCurObj = partesAtual.find(p => p.part_id === 'Body' + part.key || p.part_id === 'Skeleton' + part.key);
           const armorCur = armorCurObj ? armorCurObj.current_hp : 0;
           const bodyCur = bodyCurObj ? bodyCurObj.current_hp : 0;
 
-          // HP Máximo
           const armorMaxObj = partesMaximo.find(p => p.part_id === 'Armor' + part.key);
           const bodyMaxObj = partesMaximo.find(p => p.part_id === 'Body' + part.key || p.part_id === 'Skeleton' + part.key);
           const armorTot = armorMaxObj ? armorMaxObj.current_hp : (armorCur || 1);
           const bodyTot = bodyMaxObj ? bodyMaxObj.current_hp : (bodyCur || 1);
 
-          const percArmor = (armorCur / armorTot) * 100;
-          const percBody = (bodyCur / bodyTot) * 100;
+          const percArmor = armorTot > 0 ? (armorCur / armorTot) * 100 : 0;
+          const percBody = bodyTot > 0 ? (bodyCur / bodyTot) * 100 : 0;
 
           const isDead = armorCur <= 0 && bodyCur <= 0;
-
           el.className = `anatomy-card area-${getAreaClass(part.key)} ${isDead ? 'part-dead' : ''}`;
           
-          let html = '';
           if (isDead) {
-            html = `
-              <div class="card-head-row">
-                <div class="card-head-left"><span class="badge-destroyed">DESTRUÍDA</span></div>
-                <span class="badge-hp-perc">-</span>
-              </div>
-              <div class="bar-group">
-                <div class="bar-meta"><span class="label-skeleton">💀 Esqueleto</span><span class="bar-val">0</span></div>
-                <div class="bar-track"><div class="bar-fill-armor" style="width: 0%;"></div></div>
-              </div>
-            `;
+            el.innerHTML = `<div class="card-head-row"><div class="card-head-left"><span class="badge-destroyed">DESTRUÍDA</span></div><span class="badge-hp-perc">-</span></div><div class="bar-group"><div class="bar-meta"><span class="label-skeleton">💀 Esqueleto</span><span class="bar-val">0</span></div><div class="bar-track"><div class="bar-fill-armor" style="width: 0%;"></div></div></div>`;
           } else if (armorCur > 0) {
-            html = `
-              <div class="card-head-row">
-                <div class="card-head-left"></div>
-                <span class="badge-hp-perc">${percArmor.toFixed(0)}%</span>
-              </div>
-              <div class="bar-group">
-                <div class="bar-meta"><span class="label-armor">🛡️ Armadura</span><span class="bar-val">${formatarHp(armorCur)}</span></div>
-                <div class="bar-track"><div class="bar-fill-armor" style="width: ${percArmor}%;"></div></div>
-              </div>
-            `;
+            el.innerHTML = `<div class="card-head-row"><div class="card-head-left"></div><span class="badge-hp-perc">${percArmor.toFixed(0)}%</span></div><div class="bar-group"><div class="bar-meta"><span class="label-armor">🛡️ Armadura</span><span class="bar-val">${formatarHp(armorCur)}</span></div><div class="bar-track"><div class="bar-fill-armor" style="width: ${percArmor}%;"></div></div></div>`;
           } else {
-            html = `
-              <div class="card-head-row">
-                <div class="card-head-left"></div>
-                <span class="badge-hp-perc">${percBody.toFixed(0)}%</span>
-              </div>
-              <div class="bar-group">
-                <div class="bar-meta"><span class="label-body">❤️ Corpo</span><span class="bar-val">${formatarHp(bodyCur)}</span></div>
-                <div class="bar-track"><div class="bar-fill-body target-ok" style="width: ${percBody}%;"></div></div>
-              </div>
-            `;
+            el.innerHTML = `<div class="card-head-row"><div class="card-head-left"></div><span class="badge-hp-perc">${percBody.toFixed(0)}%</span></div><div class="bar-group"><div class="bar-meta"><span class="label-body">❤️ Corpo</span><span class="bar-val">${formatarHp(bodyCur)}</span></div><div class="bar-track"><div class="bar-fill-body" style="width: ${percBody}%; background: linear-gradient(90deg, #38ef7d, #11998e);"></div></div></div>`;
           }
-          el.innerHTML = html;
         });
 
       } catch (err) {
-        console.error("Erro:", err);
-        document.getElementById('lastUpdateText').textContent = 'Erro ao buscar dados no Supabase.';
+        txtStatus.textContent = 'Erro ao carregar o painel.';
       }
     }
 
-    // Carrega na hora que abre e atualiza sozinho a cada 5 segundos
-    window.addEventListener('load', () => {
-      carregarPainel();
-      setInterval(carregarPainel, 5000); 
-    });
+    window.addEventListener('load', () => { carregarPainel(); setInterval(carregarPainel, 5000); });
   </script>
 </body>
 </html>
