@@ -739,9 +739,9 @@
       try {
         const headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
 
-        // 1. Puxa o último ataque (HP Atual) e o último ciclo (HP Máximo)
+        // 1. Puxa o último evento de HP (ataque OU nascimento) e o último ciclo (HP Máximo)
         const [resAtaque, resCiclo] = await Promise.all([
-          fetch(`${SUPABASE_URL}?tipo_evento=eq.ataque_processado&order=id.desc&limit=1`, { headers }),
+          fetch(`${SUPABASE_URL}?tipo_evento=in.(ataque_processado,raid_sub_cycle)&order=id.desc&limit=1`, { headers }),
           fetch(`${SUPABASE_URL}?tipo_evento=eq.raid_sub_cycle&order=id.desc&limit=1`, { headers })
         ]);
 
