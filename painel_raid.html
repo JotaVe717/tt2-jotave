@@ -704,8 +704,8 @@
 
   <script>
     // Conexão direta com o seu Supabase
-    const SUPABASE_URL = 'https://hqhirsnowapylfwhvduf.supabase.co/rest/v1/eventos_raid?order=id.desc&limit=1';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxaGlyc25vd2FweWxmd2h2ZHVmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjkzNTkxOCwiZXhwIjoyMTA4NTExOTE4fQ.sAZeXN1XFKDh0gVGBomanuHM6GkcEto8AmxZzNRehpI';
+    const SUPABASE_URL = 'https://hqhirsnowapylfwhvduf.supabase.co/rest/v1/eventos_raid';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxaGlyc25vd2FweWxmd2h2ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5MzU5MTgsImV4cCI6MjEwODUxMTkxOH0.d3IMYDumY7PZoM0ZdoiuMRikWjFXC0-rgR-dtUM-HZU';
 
     const TITAN_NAMES = {
       "Enemy1": "Lojak", "Enemy2": "Takedar", "Enemy3": "Jukk", "Enemy4": "Sterl",
@@ -737,31 +737,39 @@
 
     async function carregarPainel() {
       try {
-        // 1. Puxa o último evento do Supabase
-        const resposta = await fetch(SUPABASE_URL, {
-          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
-        });
-        const dados = await resposta.json();
+        const headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
+
+        // 1. Puxa o último ataque (HP Atual) e o último ciclo (HP Máximo)
+        const [resAtaque, resCiclo] = await Promise.all([
+          fetch(`${SUPABASE_URL}?tipo_evento=eq.ataque_processado&order=id.desc&limit=1`, { headers }),
+          fetch(`${SUPABASE_URL}?tipo_evento=eq.raid_sub_cycle&order=id.desc&limit=1`, { headers })
+        ]);
+
+        const dadosAtaque = await resAtaque.json();
+        const dadosCiclo = await resCiclo.json();
         
-        if (!dados || dados.length === 0) {
-          document.getElementById('lastUpdateText').textContent = 'Nenhum ataque registrado ainda.';
+        if (!dadosAtaque || dadosAtaque.length === 0) {
+          document.getElementById('lastUpdateText').textContent = 'Aguardando o primeiro ataque...';
           return;
         }
 
-        const payload = dados[0].dados;
-        const raidState = payload.raid_state?.current;
+        const stateAtual = dadosAtaque[0].dados.raid_state?.current;
+        // O HP máximo é a vida que o titã tinha no início do ciclo
+        const stateMaximo = (dadosCiclo && dadosCiclo.length > 0) ? dadosCiclo[0].dados.raid_state?.current : stateAtual;
         
-        if (!raidState) return;
+        if (!stateAtual) return;
 
         // 2. Prepara os dados básicos do Titã
-        const titanId = raidState.enemy_id;
+        const titanId = stateAtual.enemy_id;
         const titanName = TITAN_NAMES[titanId] || titanId;
-        const titanHpTotal = raidState.total_hp || 1; // Evitar divisão por zero
-        const titanHpAtual = raidState.current_hp || 0;
+        
+        // Agora calcula corretamente com base no estado inicial do Titã
+        const titanHpTotal = stateMaximo.current_hp || stateAtual.current_hp || 1;
+        const titanHpAtual = stateAtual.current_hp || 0;
         const percHp = (titanHpAtual / titanHpTotal) * 100;
 
         document.getElementById('mRaidName').textContent = 'Raid Ativa';
-        document.getElementById('cRaidCycle').textContent = 'Ciclo ' + (payload.cycle || '-');
+        document.getElementById('cRaidCycle').textContent = 'Ciclo ' + (dadosAtaque[0].dados.cycle || '-');
         document.getElementById('cTitanName').textContent = titanName;
         
         document.getElementById('cTitanHpTxt').textContent = `${formatarHp(titanHpAtual)} / ${formatarHp(titanHpTotal)} (${percHp.toFixed(1)}%)`;
@@ -771,20 +779,24 @@
         document.getElementById('secCurrentTitan').style.display = 'block';
 
         // 3. Atualiza as barras das partes do corpo
-        const partesHp = raidState.parts || [];
+        const partesAtual = stateAtual.parts || [];
+        const partesMaximo = stateMaximo.parts || [];
         
         ANATOMY_PARTS.forEach(part => {
           const el = document.getElementById(`card_${part.key}`);
           if (!el) return;
 
-          // Procura a armadura e o corpo dessa parte
-          const armor = partesHp.find(p => p.part_id === 'Armor' + part.key);
-          const body = partesHp.find(p => p.part_id === 'Body' + part.key || p.part_id === 'Skeleton' + part.key);
+          // HP Atual
+          const armorCurObj = partesAtual.find(p => p.part_id === 'Armor' + part.key);
+          const bodyCurObj = partesAtual.find(p => p.part_id === 'Body' + part.key || p.part_id === 'Skeleton' + part.key);
+          const armorCur = armorCurObj ? armorCurObj.current_hp : 0;
+          const bodyCur = bodyCurObj ? bodyCurObj.current_hp : 0;
 
-          const armorCur = armor ? armor.current_hp : 0;
-          const armorTot = armor ? armor.total_hp : 1;
-          const bodyCur = body ? body.current_hp : 0;
-          const bodyTot = body ? body.total_hp : 1;
+          // HP Máximo
+          const armorMaxObj = partesMaximo.find(p => p.part_id === 'Armor' + part.key);
+          const bodyMaxObj = partesMaximo.find(p => p.part_id === 'Body' + part.key || p.part_id === 'Skeleton' + part.key);
+          const armorTot = armorMaxObj ? armorMaxObj.current_hp : (armorCur || 1);
+          const bodyTot = bodyMaxObj ? bodyMaxObj.current_hp : (bodyCur || 1);
 
           const percArmor = (armorCur / armorTot) * 100;
           const percBody = (bodyCur / bodyTot) * 100;
