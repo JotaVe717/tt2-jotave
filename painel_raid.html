@@ -739,37 +739,49 @@
       try {
         const headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
 
-        // 1. Puxa o último evento de HP (ataque OU nascimento) e o último ciclo (HP Máximo)
+        // Puxa o último ataque e o último ciclo separadamente
         const [resAtaque, resCiclo] = await Promise.all([
-          fetch(`${SUPABASE_URL}?tipo_evento=in.(ataque_processado,raid_sub_cycle)&order=id.desc&limit=1`, { headers }),
+          fetch(`${SUPABASE_URL}?tipo_evento=eq.ataque_processado&order=id.desc&limit=1`, { headers }),
           fetch(`${SUPABASE_URL}?tipo_evento=eq.raid_sub_cycle&order=id.desc&limit=1`, { headers })
         ]);
 
         const dadosAtaque = await resAtaque.json();
         const dadosCiclo = await resCiclo.json();
         
-        if (!dadosAtaque || dadosAtaque.length === 0) {
-          document.getElementById('lastUpdateText').textContent = 'Aguardando o primeiro ataque...';
-          return;
+        let stateAtual = null;
+        let stateMaximo = null;
+        let cicloText = '-';
+
+        // Define o estado atual baseado num ataque ou, na ausência dele, no início do ciclo
+        if (dadosAtaque && dadosAtaque.length > 0) {
+          stateAtual = dadosAtaque[0].dados.raid_state?.current;
+          cicloText = dadosAtaque[0].dados.cycle || '-';
+        } else if (dadosCiclo && dadosCiclo.length > 0) {
+          stateAtual = dadosCiclo[0].dados.raid_state?.current;
         }
 
-        const stateAtual = dadosAtaque[0].dados.raid_state?.current;
-        // O HP máximo é a vida que o titã tinha no início do ciclo
-        const stateMaximo = (dadosCiclo && dadosCiclo.length > 0) ? dadosCiclo[0].dados.raid_state?.current : stateAtual;
+        // Define o HP Máximo com base no início do ciclo
+        if (dadosCiclo && dadosCiclo.length > 0) {
+          stateMaximo = dadosCiclo[0].dados.raid_state?.current;
+        } else {
+          stateMaximo = stateAtual;
+        }
         
-        if (!stateAtual) return;
+        if (!stateAtual) {
+          document.getElementById('lastUpdateText').textContent = 'Aguardando dados da Game Hive...';
+          return;
+        }
 
         // 2. Prepara os dados básicos do Titã
         const titanId = stateAtual.enemy_id;
         const titanName = TITAN_NAMES[titanId] || titanId;
         
-        // Agora calcula corretamente com base no estado inicial do Titã
         const titanHpTotal = stateMaximo.current_hp || stateAtual.current_hp || 1;
         const titanHpAtual = stateAtual.current_hp || 0;
         const percHp = (titanHpAtual / titanHpTotal) * 100;
 
         document.getElementById('mRaidName').textContent = 'Raid Ativa';
-        document.getElementById('cRaidCycle').textContent = 'Ciclo ' + (dadosAtaque[0].dados.cycle || '-');
+        document.getElementById('cRaidCycle').textContent = 'Ciclo ' + cicloText;
         document.getElementById('cTitanName').textContent = titanName;
         
         document.getElementById('cTitanHpTxt').textContent = `${formatarHp(titanHpAtual)} / ${formatarHp(titanHpTotal)} (${percHp.toFixed(1)}%)`;
@@ -786,13 +798,11 @@
           const el = document.getElementById(`card_${part.key}`);
           if (!el) return;
 
-          // HP Atual
           const armorCurObj = partesAtual.find(p => p.part_id === 'Armor' + part.key);
           const bodyCurObj = partesAtual.find(p => p.part_id === 'Body' + part.key || p.part_id === 'Skeleton' + part.key);
           const armorCur = armorCurObj ? armorCurObj.current_hp : 0;
           const bodyCur = bodyCurObj ? bodyCurObj.current_hp : 0;
 
-          // HP Máximo
           const armorMaxObj = partesMaximo.find(p => p.part_id === 'Armor' + part.key);
           const bodyMaxObj = partesMaximo.find(p => p.part_id === 'Body' + part.key || p.part_id === 'Skeleton' + part.key);
           const armorTot = armorMaxObj ? armorMaxObj.current_hp : (armorCur || 1);
@@ -849,7 +859,6 @@
       }
     }
 
-    // Carrega na hora que abre e atualiza sozinho a cada 5 segundos
     window.addEventListener('load', () => {
       carregarPainel();
       setInterval(carregarPainel, 5000); 
