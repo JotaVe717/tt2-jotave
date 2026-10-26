@@ -92,113 +92,62 @@
     const SUPABASE_URL = 'https://hqhirsnowapylfwhvduf.supabase.co/rest/v1/eventos_raid';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxaGlyc25vd2FweWxmd2h2ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5MzU5MTgsImV4cCI6MjEwODUxMTkxOH0.d3IMYDumY7PZoM0ZdoiuMRikWjFXC0-rgR-dtUM-HZU';
 
-    const TITAN_NAMES = { "Enemy1": "Lojak", "Enemy2": "Takedar", "Enemy3": "Jukk", "Enemy4": "Sterl", "Enemy5": "Mohaca", "Enemy6": "Terro", "Enemy7": "Klonk", "Enemy8": "Priker" };
-    const ANATOMY_PARTS = [{ key: 'Head' }, { key: 'ChestUpper' }, { key: 'ArmUpperLeft' }, { key: 'ArmUpperRight' }, { key: 'HandLeft' }, { key: 'HandRight' }, { key: 'LegUpperLeft' }, { key: 'LegUpperRight' }];
-
-    function formatarHp(valor) {
-      const v = Number(valor) || 0;
-      if (v <= 0) return '0';
-      if (v >= 1000000000) return (v / 1000000000).toFixed(2) + 'B';
-      if (v >= 1000000) return Math.round(v / 1000000) + 'M';
-      return Math.round(v / 1000) + 'K';
-    }
-
-    function getAreaClass(key) {
-      const map = { 'Head':'head', 'ChestUpper':'chest', 'ArmUpperRight':'shoulderR', 'ArmUpperLeft':'shoulderL', 'HandRight':'handR', 'HandLeft':'handL', 'LegUpperRight':'legR', 'LegUpperLeft':'legL' };
-      return map[key] || '';
-    }
-
     async function carregarPainel() {
+      const txtStatus = document.getElementById('lastUpdateText');
       try {
-        const headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
+        const res = await fetch(`${SUPABASE_URL}?order=id.desc&limit=5`, { 
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } 
+        });
         
-        // Puxa os últimos 10 eventos para garantir que encontramos dados válidos
-        const res = await fetch(`${SUPABASE_URL}?order=id.desc&limit=10`, { headers });
+        if (!res.ok) throw new Error('Falha HTTP: ' + res.status);
         const eventos = await res.json();
         
-        let stateAtual = null;
-        let stateMaximo = null;
-        let cicloText = '-';
-
-        // Varre os eventos para extrair o HP Atual e Máximo
-        for (let ev of eventos) {
-          if (!ev.dados) continue;
-          
-          // Encontra o estado mais recente do titã
-          if (!stateAtual && ev.dados.raid_state && ev.dados.raid_state.current) {
-            stateAtual = ev.dados.raid_state.current;
-            if (ev.dados.cycle) cicloText = ev.dados.cycle;
-          }
-          
-          // Encontra o HP máximo no início do ciclo
-          if (!stateMaximo && ev.tipo_evento === 'raid_sub_cycle' && ev.dados.raid && ev.dados.raid.titans) {
-            stateMaximo = ev.dados.raid.titans.find(t => t.current_hp > 0) || ev.dados.raid.titans[0];
-            if (ev.dados.cycle) cicloText = ev.dados.cycle;
-          }
-        }
-
-        if (!stateAtual && stateMaximo) stateAtual = stateMaximo;
-        if (!stateMaximo && stateAtual) stateMaximo = stateAtual;
-
-        if (!stateAtual) {
-          document.getElementById('lastUpdateText').textContent = 'Aguardando dados estruturados...';
+        if (eventos.length === 0) {
+          txtStatus.textContent = 'Tabela vazia no Supabase.';
           return;
         }
 
-        const titanId = stateAtual.enemy_id || stateAtual.id;
-        const titanName = TITAN_NAMES[titanId] || titanId || 'Titã';
+        let titan = null;
+        let maxHp = 1;
         
-        const titanHpTotal = stateMaximo.current_hp || stateAtual.current_hp || 1;
-        const titanHpAtual = stateAtual.current_hp || 0;
-        const percHp = (titanHpAtual / titanHpTotal) * 100;
-
-        document.getElementById('cRaidCycle').textContent = 'Ciclo ' + cicloText;
-        document.getElementById('cTitanName').textContent = titanName;
-        document.getElementById('cTitanHpTxt').textContent = `${formatarHp(titanHpAtual)} / ${formatarHp(titanHpTotal)} (${percHp.toFixed(1)}%)`;
-        document.getElementById('cTitanHpFill').style.width = `${Math.max(0, Math.min(100, percHp))}%`;
-
-        document.getElementById('lastUpdateText').textContent = 'Ao Vivo';
-        document.getElementById('secCurrentTitan').style.display = 'block';
-
-        const partesAtual = stateAtual.parts || [];
-        const partesMaximo = stateMaximo.parts || [];
-        
-        ANATOMY_PARTS.forEach(part => {
-          const el = document.getElementById(`card_${part.key}`);
-          if (!el) return;
-
-          const armorCurObj = partesAtual.find(p => p.part_id === 'Armor' + part.key);
-          const bodyCurObj = partesAtual.find(p => p.part_id === 'Body' + part.key || p.part_id === 'Skeleton' + part.key);
-          const armorCur = armorCurObj ? armorCurObj.current_hp : 0;
-          const bodyCur = bodyCurObj ? bodyCurObj.current_hp : 0;
-
-          const armorMaxObj = partesMaximo.find(p => p.part_id === 'Armor' + part.key);
-          const bodyMaxObj = partesMaximo.find(p => p.part_id === 'Body' + part.key || p.part_id === 'Skeleton' + part.key);
-          const armorTot = armorMaxObj ? armorMaxObj.current_hp : (armorCur || 1);
-          const bodyTot = bodyMaxObj ? bodyMaxObj.current_hp : (bodyCur || 1);
-
-          const percArmor = armorTot > 0 ? (armorCur / armorTot) * 100 : 0;
-          const percBody = bodyTot > 0 ? (bodyCur / bodyTot) * 100 : 0;
-
-          const isDead = armorCur <= 0 && bodyCur <= 0;
-
-          el.className = `anatomy-card area-${getAreaClass(part.key)} ${isDead ? 'part-dead' : ''}`;
-          
-          if (isDead) {
-            el.innerHTML = `<div class="card-head-row"><div class="card-head-left"><span class="badge-destroyed">DESTRUÍDA</span></div><span class="badge-hp-perc">-</span></div><div class="bar-group"><div class="bar-meta"><span class="label-skeleton">💀 Esqueleto</span><span class="bar-val">0</span></div><div class="bar-track"><div class="bar-fill-armor" style="width: 0%;"></div></div></div>`;
-          } else if (armorCur > 0) {
-            el.innerHTML = `<div class="card-head-row"><div class="card-head-left"></div><span class="badge-hp-perc">${percArmor.toFixed(0)}%</span></div><div class="bar-group"><div class="bar-meta"><span class="label-armor">🛡️ Armadura</span><span class="bar-val">${formatarHp(armorCur)}</span></div><div class="bar-track"><div class="bar-fill-armor" style="width: ${percArmor}%;"></div></div></div>`;
-          } else {
-            el.innerHTML = `<div class="card-head-row"><div class="card-head-left"></div><span class="badge-hp-perc">${percBody.toFixed(0)}%</span></div><div class="bar-group"><div class="bar-meta"><span class="label-body">❤️ Corpo</span><span class="bar-val">${formatarHp(bodyCur)}</span></div><div class="bar-track"><div class="bar-fill-body" style="width: ${percBody}%; background: linear-gradient(90deg, #38ef7d, #11998e);"></div></div></div>`;
+        for (let ev of eventos) {
+          if (!ev.dados) continue;
+          if (ev.dados.raid_state?.current) {
+            titan = ev.dados.raid_state.current;
+            maxHp = titan.total_hp || titan.current_hp;
+            break;
           }
-        });
+          if (ev.dados.raid?.titans) {
+            titan = ev.dados.raid.titans.find(t => t.current_hp > 0) || ev.dados.raid.titans[0];
+            maxHp = titan.total_hp || titan.current_hp;
+            break;
+          }
+        }
+
+        if (!titan) {
+          txtStatus.textContent = 'JSON lido, mas sem formato de Titã. Tipo do último: ' + eventos[0].tipo_evento;
+          return;
+        }
+
+        txtStatus.textContent = 'Dados carregados com sucesso!';
+        document.getElementById('secCurrentTitan').style.display = 'block';
+        
+        const nome = titan.id || titan.enemy_id || 'Titã';
+        document.getElementById('cTitanName').textContent = nome;
+        
+        const hpAtual = titan.current_hp || 0;
+        const perc = Math.max(0, Math.min(100, (hpAtual / maxHp) * 100));
+        
+        document.getElementById('cTitanHpTxt').textContent = `${hpAtual} / ${maxHp} (${perc.toFixed(1)}%)`;
+        document.getElementById('cTitanHpFill').style.width = `${perc}%`;
 
       } catch (err) {
-        console.error(err);
+        txtStatus.textContent = 'Erro fatal JS: ' + err.message;
+        document.getElementById('secCurrentTitan').style.display = 'none';
       }
     }
 
-    window.addEventListener('load', () => { carregarPainel(); setInterval(carregarPainel, 5000); });
+    window.addEventListener('load', carregarPainel);
   </script>
 </body>
 </html>
