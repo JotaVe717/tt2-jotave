@@ -752,27 +752,34 @@
         let stateMaximo = null;
         let cicloText = '-';
 
-        // Define o estado atual baseado num ataque ou, na ausência dele, no início do ciclo
-        if (dadosAtaque && dadosAtaque.length > 0) {
-          stateAtual = dadosAtaque[0].dados.raid_state?.current;
-          cicloText = dadosAtaque[0].dados.cycle || '-';
-        } else if (dadosCiclo && dadosCiclo.length > 0) {
-          stateAtual = dadosCiclo[0].dados.raid_state?.current;
+        // 1. Tenta extrair a lista de titãs do início do ciclo
+        if (dadosCiclo && dadosCiclo.length > 0) {
+          const payloadCiclo = dadosCiclo[0].dados;
+          cicloText = payloadCiclo.cycle || cicloText;
+          if (payloadCiclo.raid && payloadCiclo.raid.titans) {
+            // Encontra o titã atual (o primeiro que ainda tem HP)
+            stateMaximo = payloadCiclo.raid.titans.find(t => t.current_hp > 0) || payloadCiclo.raid.titans[0];
+          }
         }
 
-        // Define o HP Máximo com base no início do ciclo
-        if (dadosCiclo && dadosCiclo.length > 0) {
-          stateMaximo = dadosCiclo[0].dados.raid_state?.current;
+        // 2. Tenta extrair a vida do ataque mais recente
+        if (dadosAtaque && dadosAtaque.length > 0) {
+          stateAtual = dadosAtaque[0].dados.raid_state?.current;
+          cicloText = dadosAtaque[0].dados.cycle || cicloText;
         } else {
-          stateMaximo = stateAtual;
+          // Se não houver nenhum ataque, usa o estado intacto do titã do sub_cycle
+          stateAtual = stateMaximo;
         }
+        
+        // Proteção contra falhas estruturais
+        if (!stateMaximo) stateMaximo = stateAtual;
         
         if (!stateAtual) {
           document.getElementById('lastUpdateText').textContent = 'Aguardando dados da Game Hive...';
           return;
         }
 
-        // 2. Prepara os dados básicos do Titã
+        // 3. Prepara os dados básicos do Titã
         const titanId = stateAtual.enemy_id;
         const titanName = TITAN_NAMES[titanId] || titanId;
         
@@ -790,7 +797,7 @@
         document.getElementById('lastUpdateText').textContent = 'Conectado ao Supabase: Dados em tempo real';
         document.getElementById('secCurrentTitan').style.display = 'block';
 
-        // 3. Atualiza as barras das partes do corpo
+        // 4. Atualiza as barras das partes do corpo
         const partesAtual = stateAtual.parts || [];
         const partesMaximo = stateMaximo.parts || [];
         
