@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Painel de Raids ao Vivo - Tap Titans 2</title>
+  <!-- Biblioteca oficial do Supabase para Realtime -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -604,7 +606,7 @@
       </div>
     </div>
 
-    <div class="subtitle" id="lastUpdateText">Sincronizando com as suas planilhas...</div>
+    <div class="subtitle" id="lastUpdateText">Sincronizando com a nuvem...</div>
 
     <!-- PAINEL DO TITÃ -->
     <div class="section-block" id="secCurrentTitan" style="display: none;">
@@ -617,7 +619,7 @@
           <!-- LINHA 1: MT1 + BUFF DA RAID À ESQUERDA | BADGES VOID/SMASH/VM À DIREITA -->
           <div class="titan-zone-row">
             <div class="titan-zone-left-tags">
-              <span class="badge-zone" id="mRaidName">MT1</span>
+              <span class="badge-zone" id="mRaidName">Raid Ativa</span>
               
               <!-- BUFF DA RAID (+30% DANO) AO LADO DE MT1 -->
               <div class="buff-badge-display" id="buffRaidContainer">
@@ -637,13 +639,13 @@
           <!-- LINHA 2: #3 STERL À ESQUERDA | TITÃ 3/3 E CICLO 4 À DIREITA NA MESMA ALTURA -->
           <div class="titan-name-row">
             <div class="titan-name-left">
-              <span class="titan-seq" id="cTitanSeq">#3</span>
+              <span class="titan-seq" id="cTitanSeq">#</span>
               <span class="titan-name-text" id="cTitanName">Nome do Titã</span>
             </div>
             
             <div class="titan-name-right-tags">
-              <span class="badge-tita-count" id="cTitanCount">Titã 3/3</span>
-              <span class="badge-ciclo-tag" id="cRaidCycle">Ciclo 4</span>
+              <span class="badge-tita-count" id="cTitanCount">Titã Ativo</span>
+              <span class="badge-ciclo-tag" id="cRaidCycle">Ciclo -</span>
             </div>
           </div>
 
@@ -703,11 +705,19 @@
   </div>
 
   <script>
+    // Conexão direta com o seu Supabase
     const SUPABASE_URL = 'https://hqhirsnowapylfwhvduf.supabase.co/rest/v1/eventos_raid';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxaGlyc25vd2FweWxmd2h2ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5MzU5MTgsImV4cCI6MjEwODUxMTkxOH0.d3IMYDumY7PZoM0ZdoiuMRikWjFXC0-rgR-dtUM-HZU';
 
-    const TITAN_NAMES = { "Enemy1": "Lojak", "Enemy2": "Takedar", "Enemy3": "Jukk", "Enemy4": "Sterl", "Enemy5": "Mohaca", "Enemy6": "Terro", "Enemy7": "Klonk", "Enemy8": "Priker" };
-    const ANATOMY_PARTS = [{ key: 'Head' }, { key: 'ChestUpper' }, { key: 'ArmUpperLeft' }, { key: 'ArmUpperRight' }, { key: 'HandLeft' }, { key: 'HandRight' }, { key: 'LegUpperLeft' }, { key: 'LegUpperRight' }];
+    const TITAN_NAMES = {
+      "Enemy1": "Lojak", "Enemy2": "Takedar", "Enemy3": "Jukk", "Enemy4": "Sterl",
+      "Enemy5": "Mohaca", "Enemy6": "Terro", "Enemy7": "Klonk", "Enemy8": "Priker"
+    };
+
+    const ANATOMY_PARTS = [
+      { key: 'Head' }, { key: 'ChestUpper' }, { key: 'ArmUpperLeft' }, { key: 'ArmUpperRight' },
+      { key: 'HandLeft' }, { key: 'HandRight' }, { key: 'LegUpperLeft' }, { key: 'LegUpperRight' }
+    ];
 
     function formatarHp(valor) {
       const v = Number(valor) || 0;
@@ -718,15 +728,20 @@
     }
 
     function getAreaClass(key) {
-      const map = { 'Head':'head', 'ChestUpper':'chest', 'ArmUpperRight':'shoulderR', 'ArmUpperLeft':'shoulderL', 'HandRight':'handR', 'HandLeft':'handL', 'LegUpperRight':'legR', 'LegUpperLeft':'legL' };
-      return map[key] || '';
+      switch(key) {
+        case 'Head': return 'head'; case 'ChestUpper': return 'chest';
+        case 'ArmUpperRight': return 'shoulderR'; case 'ArmUpperLeft': return 'shoulderL';
+        case 'HandRight': return 'handR'; case 'HandLeft': return 'handL';
+        case 'LegUpperRight': return 'legR'; case 'LegUpperLeft': return 'legL';
+        default: return '';
+      }
     }
 
     async function carregarPainel() {
       const txtStatus = document.getElementById('lastUpdateText');
       try {
         const headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
-        
+
         // Fazemos duas buscas separadas para evitar falhas de sintaxe na base de dados
         const [resAtaques, resCiclos] = await Promise.all([
           fetch(`${SUPABASE_URL}?tipo_evento=eq.ataque_processado&order=id.desc&limit=10`, { headers }),
@@ -747,7 +762,7 @@
           if (ev.dados && ev.dados.raid && ev.dados.raid.titans) {
             stateMaximo = ev.dados.raid.titans.find(t => t.current_hp > 0) || ev.dados.raid.titans[0];
             if (ev.dados.cycle) cicloText = ev.dados.cycle;
-            break; // Achou o mais recente válido, para a busca
+            break;
           }
         }
 
@@ -756,34 +771,35 @@
           if (ev.dados && ev.dados.raid_state && ev.dados.raid_state.current) {
             stateAtual = ev.dados.raid_state.current;
             if (ev.dados.cycle) cicloText = ev.dados.cycle;
-            break; // Achou o ataque completo mais recente, para a busca
+            break; 
           }
         }
 
         // 3. Garantir que o painel não quebra caso um dos eventos não exista
         if (!stateAtual) stateAtual = stateMaximo;
         if (!stateMaximo) stateMaximo = stateAtual;
-
-        if (!stateAtual) {
-          txtStatus.textContent = 'Aguardando informações do Titã...';
-          return;
-        }
-
-        txtStatus.textContent = 'Ao Vivo';
-        document.getElementById('secCurrentTitan').style.display = 'block';
-
-        const titanId = stateAtual.enemy_id || stateAtual.id;
-        const titanName = TITAN_NAMES[titanId] || titanId || 'Titã';
         
+        if (!stateAtual) return;
+
+        // Prepara os dados básicos do Titã
+        const titanId = stateAtual.enemy_id || stateAtual.id;
+        const titanName = TITAN_NAMES[titanId] || titanId;
+        
+        // Calcula a vida atual e total
         const titanHpTotal = stateMaximo.current_hp || stateAtual.current_hp || 1;
         const titanHpAtual = stateAtual.current_hp || 0;
         const percHp = (titanHpAtual / titanHpTotal) * 100;
 
         document.getElementById('cRaidCycle').textContent = 'Ciclo ' + cicloText;
         document.getElementById('cTitanName').textContent = titanName;
+        
         document.getElementById('cTitanHpTxt').textContent = `${formatarHp(titanHpAtual)} / ${formatarHp(titanHpTotal)} (${percHp.toFixed(1)}%)`;
         document.getElementById('cTitanHpFill').style.width = `${Math.max(0, Math.min(100, percHp))}%`;
 
+        txtStatus.textContent = 'Conectado ao Supabase (Realtime Ativo)';
+        document.getElementById('secCurrentTitan').style.display = 'block';
+
+        // Atualiza as barras das partes do corpo
         const partesAtual = stateAtual.parts || [];
         const partesMaximo = stateMaximo.parts || [];
         
@@ -791,37 +807,84 @@
           const el = document.getElementById(`card_${part.key}`);
           if (!el) return;
 
+          // HP Atual
           const armorCurObj = partesAtual.find(p => p.part_id === 'Armor' + part.key);
           const bodyCurObj = partesAtual.find(p => p.part_id === 'Body' + part.key || p.part_id === 'Skeleton' + part.key);
           const armorCur = armorCurObj ? armorCurObj.current_hp : 0;
           const bodyCur = bodyCurObj ? bodyCurObj.current_hp : 0;
 
+          // HP Máximo
           const armorMaxObj = partesMaximo.find(p => p.part_id === 'Armor' + part.key);
           const bodyMaxObj = partesMaximo.find(p => p.part_id === 'Body' + part.key || p.part_id === 'Skeleton' + part.key);
           const armorTot = armorMaxObj ? armorMaxObj.current_hp : (armorCur || 1);
           const bodyTot = bodyMaxObj ? bodyMaxObj.current_hp : (bodyCur || 1);
 
-          const percArmor = armorTot > 0 ? (armorCur / armorTot) * 100 : 0;
-          const percBody = bodyTot > 0 ? (bodyCur / bodyTot) * 100 : 0;
+          const percArmor = (armorCur / armorTot) * 100;
+          const percBody = (bodyCur / bodyTot) * 100;
 
           const isDead = armorCur <= 0 && bodyCur <= 0;
+
           el.className = `anatomy-card area-${getAreaClass(part.key)} ${isDead ? 'part-dead' : ''}`;
           
+          let html = '';
           if (isDead) {
-            el.innerHTML = `<div class="card-head-row"><div class="card-head-left"><span class="badge-destroyed">DESTRUÍDA</span></div><span class="badge-hp-perc">-</span></div><div class="bar-group"><div class="bar-meta"><span class="label-skeleton">💀 Esqueleto</span><span class="bar-val">0</span></div><div class="bar-track"><div class="bar-fill-armor" style="width: 0%;"></div></div></div>`;
+            html = `
+              <div class="card-head-row">
+                <div class="card-head-left"><span class="badge-destroyed">DESTRUÍDA</span></div>
+                <span class="badge-hp-perc">-</span>
+              </div>
+              <div class="bar-group">
+                <div class="bar-meta"><span class="label-skeleton">💀 Esqueleto</span><span class="bar-val">0</span></div>
+                <div class="bar-track"><div class="bar-fill-armor" style="width: 0%;"></div></div>
+              </div>
+            `;
           } else if (armorCur > 0) {
-            el.innerHTML = `<div class="card-head-row"><div class="card-head-left"></div><span class="badge-hp-perc">${percArmor.toFixed(0)}%</span></div><div class="bar-group"><div class="bar-meta"><span class="label-armor">🛡️ Armadura</span><span class="bar-val">${formatarHp(armorCur)}</span></div><div class="bar-track"><div class="bar-fill-armor" style="width: ${percArmor}%;"></div></div></div>`;
+            html = `
+              <div class="card-head-row">
+                <div class="card-head-left"></div>
+                <span class="badge-hp-perc">${percArmor.toFixed(0)}%</span>
+              </div>
+              <div class="bar-group">
+                <div class="bar-meta"><span class="label-armor">🛡️ Armadura</span><span class="bar-val">${formatarHp(armorCur)}</span></div>
+                <div class="bar-track"><div class="bar-fill-armor" style="width: ${percArmor}%;"></div></div>
+              </div>
+            `;
           } else {
-            el.innerHTML = `<div class="card-head-row"><div class="card-head-left"></div><span class="badge-hp-perc">${percBody.toFixed(0)}%</span></div><div class="bar-group"><div class="bar-meta"><span class="label-body">❤️ Corpo</span><span class="bar-val">${formatarHp(bodyCur)}</span></div><div class="bar-track"><div class="bar-fill-body" style="width: ${percBody}%; background: linear-gradient(90deg, #38ef7d, #11998e);"></div></div></div>`;
+            html = `
+              <div class="card-head-row">
+                <div class="card-head-left"></div>
+                <span class="badge-hp-perc">${percBody.toFixed(0)}%</span>
+              </div>
+              <div class="bar-group">
+                <div class="bar-meta"><span class="label-body">❤️ Corpo</span><span class="bar-val">${formatarHp(bodyCur)}</span></div>
+                <div class="bar-track"><div class="bar-fill-body target-ok" style="width: ${percBody}%;"></div></div>
+              </div>
+            `;
           }
+          el.innerHTML = html;
         });
 
       } catch (err) {
-        txtStatus.textContent = 'Erro ao carregar o painel: ' + err.message;
+        console.error("Erro:", err);
+        txtStatus.textContent = 'Erro ao buscar dados no Supabase.';
       }
     }
 
-    window.addEventListener('load', () => { carregarPainel(); setInterval(carregarPainel, 5000); });
+    // Inicialização com WebSocket do Supabase (Tempo Real via Nuvem)
+    window.addEventListener('load', () => {
+      carregarPainel(); // Leitura inicial
+
+      // Cria a conexão silenciosa por baixo dos panos usando apenas a URL base
+      const supabaseClient = window.supabase.createClient('https://hqhirsnowapylfwhvduf.supabase.co', SUPABASE_KEY);
+      
+      // Assina o canal de eventos para que a tela pisque a nova vida imediatamente após um ataque
+      supabaseClient
+        .channel('public:eventos_raid')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'eventos_raid' }, payload => {
+          carregarPainel();
+        })
+        .subscribe();
+    });
   </script>
 </body>
 </html>
